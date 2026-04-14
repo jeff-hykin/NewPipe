@@ -503,20 +503,15 @@ public final class Player implements PlaybackListener, Listener {
 
         } else if (intent.getBooleanExtra(RESUME_PLAYBACK, false)
                 && DependentPreferenceHelper.getResumePlaybackEnabled(context)
-                // !samePlayQueue
                 && (playQueue == null || !playQueue.equalStreamsAndIndex(newQueue))
                 && !newQueue.isEmpty()
                 && newQueue.getItem() != null
                 && newQueue.getItem().getRecoveryPosition() == PlayQueueItem.RECOVERY_UNSET) {
             databaseUpdateDisposable.add(recordManager.loadStreamState(newQueue.getItem())
                     .observeOn(AndroidSchedulers.mainThread())
-                    // Do not place initPlayback() in doFinally() because
-                    // it restarts playback after destroy()
-                    //.doFinally()
                     .subscribe(
                             state -> {
                                 if (!state.isFinished(newQueue.getItem().getDuration())) {
-                                    // resume playback only if the stream was not played to the end
                                     newQueue.setRecovery(newQueue.getIndex(),
                                             state.getProgressMillis());
                                 }
@@ -526,11 +521,9 @@ public final class Player implements PlaybackListener, Listener {
                                 if (DEBUG) {
                                     Log.w(TAG, "Failed to start playback", error);
                                 }
-                                // In case any error we can start playback without history
                                 initPlayback(newQueue, playWhenReady);
                             },
                             () -> {
-                                // Completed but not found in history
                                 initPlayback(newQueue, playWhenReady);
                             }
                     ));

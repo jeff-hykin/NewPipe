@@ -31,6 +31,7 @@ import org.schabi.newpipe.databinding.ActivityPlayerQueueControlBinding;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.fragments.OnScrollBelowItemsListener;
+import org.schabi.newpipe.fragments.detail.VideoDetailFragment;
 import org.schabi.newpipe.local.dialog.PlaylistDialog;
 import org.schabi.newpipe.player.event.PlayerEventListener;
 import org.schabi.newpipe.player.helper.PlaybackParameterDialog;
@@ -137,6 +138,9 @@ public final class PlayQueueActivity extends AppCompatActivity
         } else if (itemId == R.id.action_append_playlist) {
             PlaylistDialog.showForPlayQueue(player, getSupportFragmentManager());
             return true;
+        } else if (itemId == R.id.action_clear_queue) {
+            clearQueueKeepCurrent();
+            return true;
         } else if (itemId == R.id.action_playback_speed) {
             openPlaybackParameterDialog();
             return true;
@@ -168,6 +172,28 @@ public final class PlayQueueActivity extends AppCompatActivity
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void clearQueueKeepCurrent() {
+        if (player == null) {
+            return;
+        }
+        final PlayQueue queue = player.getPlayQueue();
+        if (queue == null) {
+            return;
+        }
+        // Remove all items except the currently playing one
+        final int currentIndex = queue.getIndex();
+        // Remove items after current (iterate from end)
+        for (int i = queue.size() - 1; i > currentIndex; i--) {
+            queue.remove(i);
+        }
+        // Remove items before current (they all shift, so always remove index 0)
+        for (int i = 0; i < currentIndex; i++) {
+            queue.remove(0);
+        }
+        // Also clear the persistent queue so it doesn't come back
+        VideoDetailFragment.clearPersistentQueue();
     }
 
     @Override

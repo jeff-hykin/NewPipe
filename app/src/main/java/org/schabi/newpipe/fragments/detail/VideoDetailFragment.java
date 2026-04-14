@@ -6,7 +6,6 @@ import static org.schabi.newpipe.extractor.stream.StreamExtractor.NO_AGE_LIMIT;
 import static org.schabi.newpipe.ktx.ViewUtils.animate;
 import static org.schabi.newpipe.ktx.ViewUtils.animateRotation;
 import static org.schabi.newpipe.player.helper.PlayerHelper.globalScreenOrientationLocked;
-import static org.schabi.newpipe.player.helper.PlayerHelper.isClearingQueueConfirmationRequired;
 import static org.schabi.newpipe.util.DependentPreferenceHelper.getResumePlaybackEnabled;
 import static org.schabi.newpipe.util.ExtractorHelper.showMetaInfoInTextView;
 import static org.schabi.newpipe.util.ListHelper.getUrlAndNonTorrentStreams;
@@ -693,6 +692,12 @@ public final class VideoDetailFragment
      */
     private static LinkedList<StackItem> stack = new LinkedList<>();
 
+    /**
+     * Persistent queue items that survive player restarts.
+     * New videos are prepended to the front when clicked.
+     */
+    private static final List<PlayQueueItem> PERSISTENT_QUEUE_ITEMS = new ArrayList<>();
+
     @Override
     public boolean onKeyDown(final int keyCode) {
         return isPlayerAvailable()
@@ -1189,6 +1194,9 @@ public final class VideoDetailFragment
      * be reused in a few milliseconds and the flickering would be annoying.
      */
     private void hideMainPlayerOnLoadingNewStream() {
+        // Save current player queue items before the player is stopped/destroyed
+        savePlayerQueueToPersistent();
+
         final var root = getRoot();
         if (!isPlayerServiceAvailable() || root.isEmpty() || !player.videoPlayerSelected()) {
             return;
@@ -1203,15 +1211,49 @@ public final class VideoDetailFragment
         }
     }
 
+    /**
+     * Clears the persistent queue items (used by the clear queue button).
+     */
+    public static void clearPersistentQueue() {
+        PERSISTENT_QUEUE_ITEMS.clear();
+    }
+
+    /**
+     * Captures the current player queue into PERSISTENT_QUEUE_ITEMS so that
+     * the queue survives player restarts when a new video is opened.
+     */
+    private void savePlayerQueueToPersistent() {
+        if (!isPlayerAvailable()) {
+            return;
+        }
+        final PlayQueue pq = player.getPlayQueue();
+        if (pq == null || pq.isDisposed()) {
+            return;
+        }
+        // Save all items from current queue
+        PERSISTENT_QUEUE_ITEMS.clear();
+        PERSISTENT_QUEUE_ITEMS.addAll(pq.getStreams());
+    }
+
     private PlayQueue setupPlayQueueForIntent(final boolean append) {
         if (append) {
             return new SinglePlayQueue(currentInfo);
         }
 
-        PlayQueue queue = playQueue;
-        // Size can be 0 because queue removes bad stream automatically when error occurs
-        if (queue == null || queue.isEmpty()) {
-            queue = new SinglePlayQueue(currentInfo);
+        // Build queue: new video at index 0, followed by any persistent queue items
+        final PlayQueueItem newItem = new PlayQueueItem(currentInfo);
+        final SinglePlayQueue queue = new SinglePlayQueue(newItem);
+        if (!PERSISTENT_QUEUE_ITEMS.isEmpty()) {
+            // Remove duplicates of the new video from persisted items
+            final List<PlayQueueItem> filtered = new ArrayList<>();
+            for (final PlayQueueItem item : PERSISTENT_QUEUE_ITEMS) {
+                if (!item.isSameItem(newItem)) {
+                    filtered.add(item);
+                }
+            }
+            if (!filtered.isEmpty()) {
+                queue.append(filtered);
+            }
         }
 
         return queue;
@@ -2135,17 +2177,8 @@ public final class VideoDetailFragment
     }
 
     private void replaceQueueIfUserConfirms(final Runnable onAllow) {
-        @Nullable final PlayQueue activeQueue = isPlayerAvailable() ? player.getPlayQueue() : null;
-
-        // Player will have STATE_IDLE when a user pressed back button
-        if (isClearingQueueConfirmationRequired(activity)
-                && playerIsNotStopped()
-                && activeQueue != null
-                && !activeQueue.equalStreams(playQueue)) {
-            showClearingQueueConfirmation(onAllow);
-        } else {
-            onAllow.run();
-        }
+        // Queue is now always preserved (prepended to), so no confirmation needed
+        onAllow.run();
     }
 
     private void showClearingQueueConfirmation(final Runnable onAllow) {

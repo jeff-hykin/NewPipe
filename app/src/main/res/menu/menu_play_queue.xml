@@ -10,6 +10,13 @@
         android:visible="true"
         app:showAsAction="ifRoom" />
 
+    <item
+        android:id="@+id/action_clear_queue"
+        android:icon="@drawable/ic_delete"
+        android:title="@string/clear_queue"
+        android:visible="true"
+        app:showAsAction="ifRoom" />
+
 
     <item
         android:id="@+id/action_playback_speed"
