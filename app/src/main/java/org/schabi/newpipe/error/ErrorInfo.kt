@@ -140,6 +140,10 @@ class ErrorInfo private constructor(
         return message.getText(context)
     }
 
+    fun isParsingError(): Boolean {
+        return message.matches(R.string.parsing_error)
+    }
+
     companion object {
         @Parcelize
         class ErrorMessage(
@@ -158,6 +162,8 @@ class ErrorInfo private constructor(
                     ctx.resources.getText(stringRes, *formatArgs)
                 }
             }
+
+            fun matches(@StringRes other: Int): Boolean = stringRes == other
         }
 
         const val SERVICE_NONE = "<unknown_service>"

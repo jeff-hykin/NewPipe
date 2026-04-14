@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -64,6 +65,14 @@ class ErrorPanelHelper(
     }
 
     fun showError(errorInfo: ErrorInfo) {
+        // Parsing errors are shown as a transient toast so they don't occupy
+        // the inline error panel and block the rest of the UI.
+        if (errorInfo.isParsingError()) {
+            Toast.makeText(context, errorInfo.getMessage(context), Toast.LENGTH_LONG).show()
+            errorPanelRoot.animate(false, 150)
+            return
+        }
+
         ensureDefaultVisibility()
         errorTextView.setTextWithLinks(errorInfo.getMessage(context))
 
