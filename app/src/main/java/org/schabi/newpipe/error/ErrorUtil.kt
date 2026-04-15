@@ -155,6 +155,10 @@ class ErrorUtil {
         }
 
         private fun showSnackbar(context: Context, rootView: View?, errorInfo: ErrorInfo) {
+            if (errorInfo.isParsingError()) {
+                Toast.makeText(context, errorInfo.getMessage(context), Toast.LENGTH_LONG).show()
+                return
+            }
             if (rootView == null) {
                 // fallback to showing a notification if no root view is available
                 createNotification(context, errorInfo)
