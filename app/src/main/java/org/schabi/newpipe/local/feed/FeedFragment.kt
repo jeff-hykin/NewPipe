@@ -104,7 +104,6 @@ class FeedFragment : BaseStateFragment<FeedState>() {
 
     private var onSettingsChangeListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var updateListViewModeOnResume = false
-    private var isRefreshing = false
 
     private var lastNewItemsCount = 0
 
@@ -312,11 +311,9 @@ class FeedFragment : BaseStateFragment<FeedState>() {
 
     override fun showLoading() {
         super.showLoading()
-        feedBinding.itemsList.animateHideRecyclerViewAllowingScrolling()
-        feedBinding.refreshRootView.animate(false, 0)
+        feedBinding.refreshRootView.animate(true, 200)
         feedBinding.loadingProgressText.animate(true, 200)
         feedBinding.swipeRefreshLayout.isRefreshing = true
-        isRefreshing = true
     }
 
     override fun hideLoading() {
@@ -325,7 +322,6 @@ class FeedFragment : BaseStateFragment<FeedState>() {
         feedBinding.refreshRootView.animate(true, 200)
         feedBinding.loadingProgressText.animate(false, 0)
         feedBinding.swipeRefreshLayout.isRefreshing = false
-        isRefreshing = false
     }
 
     override fun showEmptyState() {
@@ -352,7 +348,6 @@ class FeedFragment : BaseStateFragment<FeedState>() {
         feedBinding.refreshRootView.animate(false, 0)
         feedBinding.loadingProgressText.animate(false, 0)
         feedBinding.swipeRefreshLayout.isRefreshing = false
-        isRefreshing = false
     }
 
     private fun handleProgressState(progressState: FeedState.ProgressState) {
@@ -386,7 +381,7 @@ class FeedFragment : BaseStateFragment<FeedState>() {
 
     private val listenerStreamItem = object : OnItemClickListener, OnItemLongClickListener {
         override fun onItemClick(item: Item<*>, view: View) {
-            if (item is StreamItem && !isRefreshing) {
+            if (item is StreamItem) {
                 val stream = item.streamWithState.stream
                 NavigationHelper.openVideoDetailFragment(
                     requireContext(),
@@ -401,7 +396,7 @@ class FeedFragment : BaseStateFragment<FeedState>() {
         }
 
         override fun onItemLongClick(item: Item<*>, view: View): Boolean {
-            if (item is StreamItem && !isRefreshing) {
+            if (item is StreamItem) {
                 showInfoItemDialog(item.streamWithState.stream.toStreamInfoItem())
                 return true
             }
