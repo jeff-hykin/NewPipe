@@ -24,6 +24,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Canvas
 import android.graphics.Typeface
 import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
@@ -36,6 +37,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.core.os.bundleOf
@@ -59,6 +61,7 @@ import java.util.function.Consumer
 import org.schabi.newpipe.NewPipeDatabase
 import org.schabi.newpipe.R
 import org.schabi.newpipe.database.feed.model.FeedGroupEntity
+import org.schabi.newpipe.database.stream.model.StreamDontWatchEntity
 import org.schabi.newpipe.database.subscription.SubscriptionEntity
 import org.schabi.newpipe.databinding.FragmentFeedBinding
 import org.schabi.newpipe.error.ErrorInfo
@@ -162,7 +165,7 @@ class FeedFragment : BaseStateFragment<FeedState>() {
 
         feedBinding.itemsList.adapter = groupAdapter
         setupListViewMode()
-        setupSwipeToEnqueue()
+        setupSwipeGestures()
     }
 
     override fun onPause() {
@@ -192,13 +195,39 @@ class FeedFragment : BaseStateFragment<FeedState>() {
         }
     }
 
-    private fun setupSwipeToEnqueue() {
-        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+    private fun setupSwipeGestures() {
+        val dontWatchThreshold = 0.4f
+
+        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ) = false
+
+            override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder): Float {
+                return dontWatchThreshold
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemWidth = viewHolder.itemView.width.toFloat()
+                if (dX > 0) {
+                    // Swipe right — require more distance, add resistance
+                    val clampedDx = dX.coerceAtMost(itemWidth * dontWatchThreshold * 1.1f)
+                    super.onChildDraw(c, recyclerView, viewHolder, clampedDx, dY, actionState, isCurrentlyActive)
+                } else {
+                    // Swipe left — normal enqueue, let it move freely
+                    super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+                }
+            }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.bindingAdapterPosition
@@ -206,13 +235,30 @@ class FeedFragment : BaseStateFragment<FeedState>() {
 
                 val item = groupAdapter.getItem(position)
                 if (item is StreamItem) {
-                    val infoItem = item.streamWithState.stream.toStreamInfoItem()
-                    val ctx = requireContext()
-                    SparseItemUtil.fetchItemInfoIfSparse(ctx, infoItem) { queue ->
-                        NavigationHelper.enqueueOnPlayer(ctx, queue)
+                    if (direction == ItemTouchHelper.LEFT) {
+                        val infoItem = item.streamWithState.stream.toStreamInfoItem()
+                        val ctx = requireContext()
+                        SparseItemUtil.fetchItemInfoIfSparse(ctx, infoItem) { queue ->
+                            NavigationHelper.enqueueOnPlayer(ctx, queue)
+                        }
+                        groupAdapter.notifyItemChanged(position)
+                    } else if (direction == ItemTouchHelper.RIGHT) {
+                        val streamUid = item.streamWithState.stream.uid
+                        disposables.add(
+                            Single.fromCallable {
+                                NewPipeDatabase.getInstance(requireContext())
+                                    .streamDontWatchDAO()
+                                    .markDontWatch(StreamDontWatchEntity(streamUid))
+                            }
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe {
+                                    Toast.makeText(requireContext(), "Marked as don't watch", Toast.LENGTH_SHORT).show()
+                                    groupAdapter.removeGroupAtAdapterPosition(position)
+                                }
+                        )
                     }
                 }
-                groupAdapter.notifyItemChanged(position)
             }
         }
         ItemTouchHelper(callback).attachToRecyclerView(feedBinding.itemsList)

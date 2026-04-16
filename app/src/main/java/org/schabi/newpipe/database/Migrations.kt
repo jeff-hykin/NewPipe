@@ -29,6 +29,7 @@ object Migrations {
     const val DB_VER_7 = 7
     const val DB_VER_8 = 8
     const val DB_VER_9 = 9
+    const val DB_VER_10 = 10
 
     private val TAG = Migrations::class.java.getName()
     private val isDebug = MainActivity.DEBUG
@@ -347,5 +348,14 @@ object Migrations {
         } finally {
             db.endTransaction()
         }
+    }
+
+    val MIGRATION_9_10 = Migration(DB_VER_9, DB_VER_10) { db ->
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `stream_dont_watch` " +
+                "(`stream_id` INTEGER NOT NULL, PRIMARY KEY(`stream_id`), " +
+                "FOREIGN KEY(`stream_id`) REFERENCES `streams`(`uid`) " +
+                "ON UPDATE CASCADE ON DELETE CASCADE)"
+        )
     }
 }

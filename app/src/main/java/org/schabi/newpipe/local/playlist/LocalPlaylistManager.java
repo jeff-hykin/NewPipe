@@ -81,8 +81,10 @@ public class LocalPlaylistManager {
 
     public Completable updateJoin(final long playlistId, final List<Long> streamIds) {
         final List<PlaylistStreamEntity> joinEntities = new ArrayList<>(streamIds.size());
+        final int lastIndex = streamIds.size() - 1;
         for (int i = 0; i < streamIds.size(); i++) {
-            joinEntities.add(new PlaylistStreamEntity(playlistId, streamIds.get(i), i));
+            joinEntities.add(new PlaylistStreamEntity(playlistId, streamIds.get(i),
+                    lastIndex - i));
         }
 
         return Completable.fromRunnable(() -> database.runInTransaction(() -> {

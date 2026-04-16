@@ -41,10 +41,13 @@ abstract class FeedDAO {
 
         LEFT JOIN stream_state sst
         ON s.uid = sst.stream_id
-        
+
         LEFT JOIN stream_history sh
         ON s.uid = sh.stream_id
-        
+
+        LEFT JOIN stream_dont_watch sdw
+        ON s.uid = sdw.stream_id
+
         INNER JOIN feed f
         ON s.uid = f.stream_id
 
@@ -57,6 +60,10 @@ abstract class FeedDAO {
         WHERE (
             :groupId = ${FeedGroupEntity.GROUP_ALL_ID}
             OR fgs.group_id = :groupId
+        )
+        AND (
+            :includePlayed
+            OR sdw.stream_id IS NULL
         )
         AND (
             :includePlayed

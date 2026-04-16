@@ -26,7 +26,9 @@ import org.schabi.newpipe.database.playlist.model.PlaylistEntity
 import org.schabi.newpipe.database.playlist.model.PlaylistRemoteEntity
 import org.schabi.newpipe.database.playlist.model.PlaylistStreamEntity
 import org.schabi.newpipe.database.stream.dao.StreamDAO
+import org.schabi.newpipe.database.stream.dao.StreamDontWatchDAO
 import org.schabi.newpipe.database.stream.dao.StreamStateDAO
+import org.schabi.newpipe.database.stream.model.StreamDontWatchEntity
 import org.schabi.newpipe.database.stream.model.StreamEntity
 import org.schabi.newpipe.database.stream.model.StreamStateEntity
 import org.schabi.newpipe.database.subscription.SubscriptionDAO
@@ -34,13 +36,14 @@ import org.schabi.newpipe.database.subscription.SubscriptionEntity
 
 @TypeConverters(Converters::class)
 @Database(
-    version = Migrations.DB_VER_9,
+    version = Migrations.DB_VER_10,
     entities = [
         SubscriptionEntity::class,
         SearchHistoryEntry::class,
         StreamEntity::class,
         StreamHistoryEntity::class,
         StreamStateEntity::class,
+        StreamDontWatchEntity::class,
         PlaylistEntity::class,
         PlaylistStreamEntity::class,
         PlaylistRemoteEntity::class,
@@ -60,6 +63,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun streamDAO(): StreamDAO
     abstract fun streamHistoryDAO(): StreamHistoryDAO
     abstract fun streamStateDAO(): StreamStateDAO
+    abstract fun streamDontWatchDAO(): StreamDontWatchDAO
     abstract fun subscriptionDAO(): SubscriptionDAO
 
     companion object {

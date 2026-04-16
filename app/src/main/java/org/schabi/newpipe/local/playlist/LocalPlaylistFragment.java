@@ -724,7 +724,7 @@ public class LocalPlaylistFragment extends BaseLocalListFragment<List<PlaylistSt
             directions |= ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
         }
         return new ItemTouchHelper.SimpleCallback(directions,
-                ItemTouchHelper.ACTION_STATE_IDLE) {
+                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
             public int interpolateOutOfBoundsScroll(@NonNull final RecyclerView recyclerView,
                                                     final int viewSize,
@@ -770,12 +770,37 @@ public class LocalPlaylistFragment extends BaseLocalListFragment<List<PlaylistSt
 
             @Override
             public boolean isItemViewSwipeEnabled() {
-                return false;
+                return true;
             }
 
             @Override
             public void onSwiped(@NonNull final RecyclerView.ViewHolder viewHolder,
                                  final int swipeDir) {
+                final int adapterPosition = viewHolder.getBindingAdapterPosition();
+                if (adapterPosition == RecyclerView.NO_POSITION || itemListAdapter == null) {
+                    return;
+                }
+
+                // Header is always present in this fragment
+                final int headerOffset = 1;
+                final int listIndex = adapterPosition - headerOffset;
+                if (listIndex < 0 || listIndex >= itemListAdapter.getItemsList().size()) {
+                    return;
+                }
+
+                final LocalItem localItem = itemListAdapter.getItemsList().get(listIndex);
+                if (!(localItem instanceof PlaylistStreamEntry entry)) {
+                    return;
+                }
+
+                if (swipeDir == ItemTouchHelper.RIGHT) {
+                    deleteItem(entry);
+                } else if (swipeDir == ItemTouchHelper.LEFT) {
+                    final StreamInfoItem infoItem = entry.toStreamInfoItem();
+                    NavigationHelper.enqueueOnPlayer(requireContext(),
+                            new SinglePlayQueue(infoItem));
+                    itemListAdapter.notifyItemChanged(adapterPosition);
+                }
             }
         };
     }
