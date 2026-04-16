@@ -62,8 +62,7 @@ public class LocalPlaylistManager {
                 .firstElement()
                 .map(maxJoinIndex -> database.runInTransaction(() -> {
                             final List<Long> streamIds = streamTable.upsertAll(streams);
-                            playlistStreamTable.shiftIndices(playlistId, streamIds.size());
-                            return insertJoinEntities(playlistId, streamIds, 0);
+                            return insertJoinEntities(playlistId, streamIds, maxJoinIndex + 1);
                         }
                 )).subscribeOn(Schedulers.io());
     }

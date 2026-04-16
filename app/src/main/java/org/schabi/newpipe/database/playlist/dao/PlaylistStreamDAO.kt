@@ -34,9 +34,6 @@ interface PlaylistStreamDAO : BasicDAO<PlaylistStreamEntity> {
     @Query("DELETE FROM playlist_stream_join WHERE playlist_id = :playlistId")
     fun deleteBatch(playlistId: Long)
 
-    @Query("UPDATE playlist_stream_join SET join_index = join_index + :offset WHERE playlist_id = :playlistId")
-    fun shiftIndices(playlistId: Long, offset: Int)
-
     @Query("SELECT COALESCE(MAX(join_index), -1) FROM playlist_stream_join WHERE playlist_id = :playlistId")
     fun getMaximumIndexOf(playlistId: Long): Flowable<Int>
 
@@ -66,7 +63,7 @@ interface PlaylistStreamDAO : BasicDAO<PlaylistStreamEntity> {
         LEFT JOIN (SELECT stream_id AS stream_id_alias, progress_time FROM stream_state )
         ON uid = stream_id_alias
 
-        ORDER BY join_index ASC
+        ORDER BY join_index DESC
         """
     )
     fun getOrderedStreamsOf(playlistId: Long): Flowable<MutableList<PlaylistStreamEntry>>

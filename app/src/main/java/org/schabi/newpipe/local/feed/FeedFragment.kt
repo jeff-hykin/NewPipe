@@ -43,6 +43,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.evernote.android.state.State
 import com.xwray.groupie.GroupieAdapter
@@ -79,6 +80,7 @@ import org.schabi.newpipe.local.subscription.SubscriptionManager
 import org.schabi.newpipe.util.DeviceUtils
 import org.schabi.newpipe.util.Localization
 import org.schabi.newpipe.util.NavigationHelper
+import org.schabi.newpipe.util.SparseItemUtil
 import org.schabi.newpipe.util.ThemeHelper.getGridSpanCountStreams
 import org.schabi.newpipe.util.ThemeHelper.getItemViewMode
 import org.schabi.newpipe.util.ThemeHelper.resolveDrawable
@@ -160,6 +162,7 @@ class FeedFragment : BaseStateFragment<FeedState>() {
 
         feedBinding.itemsList.adapter = groupAdapter
         setupListViewMode()
+        setupSwipeToEnqueue()
     }
 
     override fun onPause() {
@@ -187,6 +190,32 @@ class FeedFragment : BaseStateFragment<FeedState>() {
         feedBinding.itemsList.layoutManager = GridLayoutManager(requireContext(), groupAdapter.spanCount).apply {
             spanSizeLookup = groupAdapter.spanSizeLookup
         }
+    }
+
+    private fun setupSwipeToEnqueue() {
+        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ) = false
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return
+
+                val item = groupAdapter.getItem(position)
+                if (item is StreamItem) {
+                    val infoItem = item.streamWithState.stream.toStreamInfoItem()
+                    val ctx = requireContext()
+                    SparseItemUtil.fetchItemInfoIfSparse(ctx, infoItem) { queue ->
+                        NavigationHelper.enqueueOnPlayer(ctx, queue)
+                    }
+                }
+                groupAdapter.notifyItemChanged(position)
+            }
+        }
+        ItemTouchHelper(callback).attachToRecyclerView(feedBinding.itemsList)
     }
 
     override fun initListeners() {
